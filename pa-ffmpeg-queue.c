@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 #include <pulse/context.h>
 #include <pulse/error.h>
@@ -195,6 +196,17 @@ static void stream_drain_complete(pa_stream*s, int success, void *userdata) {
     quit(EXIT_SUCCESS);
 }
 
+static void stream_cork_success(pa_stream*s, int success, void *userdata) {
+    printf("stream corked\n");
+}
+
+static void stream_write_callback(pa_stream *stream, size_t len, void *userdata);
+static void tcb(pa_mainloop_api*a, pa_time_event *e, const struct timeval *tv, void *userdata) {
+    printf("TIME EVENT\n");
+    pa_stream *stream = (pa_stream*)userdata;
+    pa_stream_cork(stream,0, stream_cork_success, NULL);
+}
+
 #define  MAX_AUDIO_FRAME_SIZE  192000
 #define  min(a,b) ((a)<(b)?(a):(b))
 static void stream_write_callback(pa_stream *stream, size_t len, void *userdata) {
@@ -205,6 +217,16 @@ static void stream_write_callback(pa_stream *stream, size_t len, void *userdata)
     size_t to_write, write_unit;
     int ret, audio_size;
 
+    static int c=0;
+    if(c==20){
+        pa_stream_cork(stream,1, stream_cork_success, NULL);
+	struct timeval tv;
+	gettimeofday(&tv,NULL);
+	tv.tv_sec+=10;
+    	pa_time_event *te = g_ml_api->time_new(g_ml_api,&tv, tcb, stream);
+	}
+    printf("c==========%d\n",c);
+    c++;
     while (len > 0)
       {
         if (audio_buf_index >= audio_buf_size)
