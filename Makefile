@@ -6,3 +6,6 @@ sf:
 	gcc -o sf	sdl-ffmpeg.c -lSDL2 -lavformat -lavcodec -lavutil -lswresample
 sfq:
 	gcc -o sfq	sdl-ffmpeg-queue.c -lSDL2 -lavformat -lavcodec -lavutil -lswresample
+
+clean:
+	rm sw sf sfq

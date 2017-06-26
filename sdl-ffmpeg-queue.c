@@ -1,4 +1,3 @@
-
 # include <stdio.h>
 # include <assert.h>
 # include <SDL2/SDL.h>
@@ -234,10 +233,9 @@ void audio_callback(void* userdata, Uint8* stream, int len)
 		if (len1 > len)
 			len1 = len;
 
-		SDL_MixAudio(stream, audio_buff + audio_buf_index, len, SDL_MIX_MAXVOLUME);
+		//SDL_MixAudio(stream, audio_buff + audio_buf_index, len1, SDL_MIX_MAXVOLUME);
+		memcpy(stream, (uint8_t*)(audio_buff + audio_buf_index), len1);
 
-
-		//memcpy(stream, (uint8_t*)(audio_buff + audio_buf_index), audio_buf_size);
 		len -= len1;
 		stream += len1;
 		audio_buf_index += len1;
@@ -329,9 +327,9 @@ int main(int argv, char* argc[])
 
 	wanted_frame.format = AV_SAMPLE_FMT_S16;
 	wanted_frame.sample_rate = spec.freq;
-        wanted_frame.channel_layout = av_get_default_channel_layout(spec.channels);
+  wanted_frame.channel_layout = av_get_default_channel_layout(spec.channels);
 	wanted_frame.channels = spec.channels;
-	
+
 	avcodec_open2(pCodecCtx, pCodec, NULL);
 
 	packet_queue_init(&audioq);
