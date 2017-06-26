@@ -103,7 +103,9 @@ static int packet_queue_get(PacketQueue* q, AVPacket* pkt, int block)
 		}
 		else
 		{
+      printf("-------------------------sleep, cannot get packet\n");
 			SDL_CondWait(q->cond, q->mutext);
+      printf("-------------------------packet ok,sleep over\n");
 		}
 	}
 
@@ -342,8 +344,17 @@ int main(int argv, char* argc[])
 			packet_queue_put(&audioq, &packet);
 		else
 			av_free_packet(&packet);
+
+    /* static int c =0; */
+    /* if(c%50==0){ */
+    /*   printf("sleep begin\n"); */
+    /*   sleep(10); */
+    /*   printf("sleep over\n"); */
+    /* } */
+    /* c++; */
 	}
 
-	getchar();
+  printf("produce packets over\n");
+  getchar();
 	return 0;
 }
