@@ -2,25 +2,25 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 
-struct AudioPlayContext 
+typedef struct  
 {
 	Uint8 * data; // pcm buffer
 	int offset; // current read pos
 	int data_len; // left data length
-	bool is_exit; // is audio play buffer empty?
-};
+	int is_exit; // is audio play buffer empty?
+}AudioPlayContext;
 
 #define min(a,b) (a<b?a:b)
 void MyAudioCallback(void* userdata, Uint8* stream, int len)
 {
-	AudioPlayContext * context = reinterpret_cast<AudioPlayContext *>(userdata);
+	AudioPlayContext * context = (AudioPlayContext*)(userdata);
 	int copy_len = min(len, context->data_len);
 	memcpy(stream, context->data+context->offset, copy_len);
 	context->data_len -= copy_len;
 	context->offset += copy_len;
 	if (context->data_len <= 0)
 	{
-		context->is_exit = true;
+		context->is_exit = 1;
 	}
 
 	if (copy_len < len)
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	context.data = wav_buffer;
 	context.data_len = wav_length;
 	context.offset = 0;
-	context.is_exit = false;
+	context.is_exit = 0;
 
 	// open audio device
 	SDL_AudioSpec want, have;

@@ -1,18 +1,12 @@
 
-# include <iostream>
 # include <stdio.h>
 # include <assert.h>
-
 # include <SDL2/SDL.h>
 # include <SDL2/SDL_thread.h>
-extern "C"{
 # include <libavcodec/avcodec.h>
 # include <libavformat/avformat.h>
 # include <libswscale/swscale.h>
 # include <libswresample/swresample.h>
-}
-
-using namespace std;
 
 typedef struct PacketQueue
 {
@@ -34,8 +28,8 @@ AVFrame wanted_frame;
 void packet_queue_init(PacketQueue* q)
 {
 	//memset(q, 0, sizeof(PacketQueue));
-	q->last_pkt = nullptr;
-	q->first_pkt = nullptr;
+	q->last_pkt = NULL;
+	q->first_pkt = NULL;
 	q->mutext = SDL_CreateMutex();
 	q->cond = SDL_CreateCond();
 }
@@ -52,7 +46,7 @@ int packet_queue_put(PacketQueue*q, AVPacket *pkt)
 		return -1;
 
 	pktl->pkt = *pkt;
-	pktl->next = nullptr;
+	pktl->next = NULL;
 
 	SDL_LockMutex(q->mutext);
 
@@ -73,14 +67,14 @@ int packet_queue_put(PacketQueue*q, AVPacket *pkt)
 }
 
 // 从队列中取出packet
-static int packet_queue_get(PacketQueue* q, AVPacket* pkt, bool block)
+static int packet_queue_get(PacketQueue* q, AVPacket* pkt, int block)
 {
 	AVPacketList* pktl;
 	int ret;
 
 	SDL_LockMutex(q->mutext);
 
-	while (true)
+	while (1)
 	{
 		if (quit)
 		{
@@ -93,7 +87,7 @@ static int packet_queue_get(PacketQueue* q, AVPacket* pkt, bool block)
 		{
 			q->first_pkt = pktl->next;
 			if (!q->first_pkt)
-				q->last_pkt = nullptr;
+				q->last_pkt = NULL;
 
 			q->nb_packets--;
 			q->size -= pktl->pkt.size;
@@ -123,16 +117,16 @@ static int packet_queue_get(PacketQueue* q, AVPacket* pkt, bool block)
 int audio_decode_frame(AVCodecContext* aCodecCtx, uint8_t* audio_buf, int buf_size)
 {
 	static AVPacket pkt;
-	static uint8_t* audio_pkt_data = nullptr;
+	static uint8_t* audio_pkt_data = NULL;
 	static int audio_pkt_size = 0;
 	static AVFrame frame;
 
 	int len1;
 	int data_size = 0;
 
-	SwrContext* swr_ctx = nullptr;
+	SwrContext* swr_ctx = NULL;
 
-	while (true)
+	while (1)
 	{
 		while (audio_pkt_size > 0)
 		{
@@ -149,7 +143,7 @@ int audio_decode_frame(AVCodecContext* aCodecCtx, uint8_t* audio_buf, int buf_si
 			data_size = 0;
 			if (got_frame)
 			{
-				data_size = av_samples_get_buffer_size(nullptr, aCodecCtx->channels, frame.nb_samples, aCodecCtx->sample_fmt, 1);
+				data_size = av_samples_get_buffer_size(NULL, aCodecCtx->channels, frame.nb_samples, aCodecCtx->sample_fmt, 1);
 				assert(data_size <= buf_size);
 				if (frame.channels == 0 && frame.channel_layout == 0)
 					return -1;
@@ -164,27 +158,27 @@ int audio_decode_frame(AVCodecContext* aCodecCtx, uint8_t* audio_buf, int buf_si
 			if (swr_ctx)
 			{
 				swr_free(&swr_ctx);
-				swr_ctx = nullptr;
+				swr_ctx = NULL;
 			}
 			
-			swr_ctx = swr_alloc_set_opts(nullptr, wanted_frame.channel_layout, (AVSampleFormat)wanted_frame.format, wanted_frame.sample_rate,frame.channel_layout, (AVSampleFormat)frame.format, frame.sample_rate, 0, nullptr);
+			swr_ctx = swr_alloc_set_opts(NULL, wanted_frame.channel_layout, (enum AVSampleFormat)wanted_frame.format, wanted_frame.sample_rate,frame.channel_layout, (enum AVSampleFormat)frame.format, frame.sample_rate, 0, NULL);
 			if (!swr_ctx || swr_init(swr_ctx) < 0)
 			{
-				cout << "swr_init failed:" << endl;
+				printf("swr_init failed\n");
 				break;
 			}
 
 			int dst_nb_samples = av_rescale_rnd(swr_get_delay(swr_ctx, frame.sample_rate) + frame.nb_samples,
-				wanted_frame.sample_rate, wanted_frame.format,AVRounding(1));
+				wanted_frame.sample_rate, wanted_frame.format,(enum AVRounding)1);
 			int len2 = swr_convert(swr_ctx, &audio_buf, dst_nb_samples,
 				(const uint8_t**)frame.data, frame.nb_samples);
 			if (len2 < 0)
 			{
-				cout << "swr_convert failed\n";
+				printf("swr_convert failed\n");
 				break;
 			}
 
-			return wanted_frame.channels * len2 * av_get_bytes_per_sample((AVSampleFormat)wanted_frame.format);
+			return wanted_frame.channels * len2 * av_get_bytes_per_sample((enum AVSampleFormat)wanted_frame.format);
 
 			if (data_size <= 0)
 				continue; // No data yet,get more frames
@@ -198,7 +192,7 @@ int audio_decode_frame(AVCodecContext* aCodecCtx, uint8_t* audio_buf, int buf_si
 		if (quit)
 			return -1;
 
-		if (packet_queue_get(&audioq, &pkt, true) < 0)
+		if (packet_queue_get(&audioq, &pkt, 1) < 0)
 			return -1;
 
 		audio_pkt_data = pkt.data;
@@ -206,8 +200,8 @@ int audio_decode_frame(AVCodecContext* aCodecCtx, uint8_t* audio_buf, int buf_si
 	}
 }
 
-static const int MAX_AUDIO_FRAME_SIZE = 192000;
-static const int SDL_AUDIO_BUFFER_SIZE = 1024;
+#define  MAX_AUDIO_FRAME_SIZE  192000
+#define  SDL_AUDIO_BUFFER_SIZE  1024
 
 // 解码后的回调函数
 void audio_callback(void* userdata, Uint8* stream, int len)
@@ -264,13 +258,13 @@ int main(int argv, char* argc[])
 
 
 	// 2.打开文件，读取流信息
-	AVFormatContext* pFormatCtx = nullptr;
+	AVFormatContext* pFormatCtx = NULL;
 	// 读取文件头，将格式相关信息存放在AVFormatContext结构体中
-	if (avformat_open_input(&pFormatCtx, filenName, nullptr, nullptr) != 0)
+	if (avformat_open_input(&pFormatCtx, filenName, NULL, NULL) != 0)
 		return -1; // 打开失败
 
 	// 检测文件的流信息
-	if (avformat_find_stream_info(pFormatCtx, nullptr) < 0)
+	if (avformat_find_stream_info(pFormatCtx, NULL) < 0)
 		return -1; // 没有检测到流信息 stream infomation
 
 	// 在控制台输出文件信息
@@ -291,10 +285,10 @@ int main(int argv, char* argc[])
 	if (audioStream == -1)
 		return -1; // 没有查找到视频流audio stream
 
-	AVCodecContext* pCodecCtxOrg = nullptr;
-	AVCodecContext* pCodecCtx = nullptr;
+	AVCodecContext* pCodecCtxOrg = NULL;
+	AVCodecContext* pCodecCtx = NULL;
 
-	AVCodec* pCodec = nullptr;
+	AVCodec* pCodec = NULL;
 
 	pCodecCtxOrg = pFormatCtx->streams[audioStream]->codec; // codec context
 
@@ -303,7 +297,7 @@ int main(int argv, char* argc[])
 
 	if (!pCodec)
 	{
-		cout << "Unsupported codec!" << endl;
+		printf("Unsupported codec!\n");
 		return -1;
 	}
 
@@ -311,7 +305,7 @@ int main(int argv, char* argc[])
 	pCodecCtx = avcodec_alloc_context3(pCodec);
 	if (avcodec_copy_context(pCodecCtx, pCodecCtxOrg) != 0)
 	{
-		cout << "Could not copy codec context!" << endl;
+		printf("Could not copy codec context!\n");
 		return -1;
 	}
 
@@ -328,7 +322,7 @@ int main(int argv, char* argc[])
 
 	if (SDL_OpenAudio(&wanted_spec, &spec) < 0)
 	{
-		cout << "Open audio failed:" << SDL_GetError() << endl;
+		printf("Open audio failed:%s\n", SDL_GetError());
 		getchar();
 		return -1;
 	}
@@ -338,7 +332,7 @@ int main(int argv, char* argc[])
         wanted_frame.channel_layout = av_get_default_channel_layout(spec.channels);
 	wanted_frame.channels = spec.channels;
 	
-	avcodec_open2(pCodecCtx, pCodec, nullptr);
+	avcodec_open2(pCodecCtx, pCodec, NULL);
 
 	packet_queue_init(&audioq);
 	SDL_PauseAudio(0);
